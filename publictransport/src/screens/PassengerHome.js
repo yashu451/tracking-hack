@@ -227,5 +227,5 @@ const styles = StyleSheet.create({
   rideText: { fontSize: 14, color: "#333" },
   modalContainer: { flex: 1, justifyContent: "center", backgroundColor: "rgba(0,0,0,0.5)" },
   modalContent: { backgroundColor: "#fff", margin: 20, borderRadius: 12, padding: 20 },
-  input: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, marginBottom: 10 },
+  input: { borderWsidth: 1, borderColor: "#ccc", borderRadius: 8, padding: 10, marginBottom: 10 },
 });
