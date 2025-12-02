@@ -76,10 +76,23 @@ export default function PassengerHome() {
     <View style={styles.container}>
       {/* Profile Card */}
       <View style={styles.profileCard}>
-        <Ionicons name="person-circle-outline" size={60} color="#1E88E5" />
-        <View style={{ marginLeft: 12 }}>
-          <Text style={styles.name}>{passenger.name || "Passenger Name"}</Text>
-          <Text style={styles.info}>Phone: {passenger.phone || "1234567890"}</Text>
+        <View style={styles.profileLeft}>
+          <Ionicons name="person-circle-outline" size={70} color="#1E88E5" />
+          <View style={{ marginLeft: 12 }}>
+            <Text style={styles.name}>{passenger.name || "Passenger Name"}</Text>
+            <Text style={styles.info}>{passenger.phone || "1234567890"}</Text>
+            <Text style={styles.info}>{passenger.email || "email@example.com"}</Text>
+          </View>
+        </View>
+        <View style={styles.profileRight}>
+          <TouchableOpacity style={styles.profileButton} onPress={() => Alert.alert("Edit Profile")}>
+            <Ionicons name="create-outline" size={22} color="#fff" />
+            <Text style={styles.buttonTextSmall}>Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.profileButton, { backgroundColor: "#FFB300" }]} onPress={() => Alert.alert("Profile Settings")}>
+            <Ionicons name="settings-outline" size={22} color="#fff" />
+            <Text style={styles.buttonTextSmall}>Settings</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -157,12 +170,39 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   profileCard: {
     flexDirection: "row",
-    padding: 12,
+    justifyContent: "space-between",
+    padding: 15,
     backgroundColor: "#fff",
     margin: 10,
-    borderRadius: 12,
+    borderRadius: 15,
     alignItems: "center",
-    elevation: 3,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+  },
+  profileLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  profileRight: {
+    justifyContent: "space-between",
+    height: 70,
+  },
+  profileButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#1E88E5",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginBottom: 6,
+  },
+  buttonTextSmall: {
+    color: "#fff",
+    fontWeight: "600",
+    marginLeft: 6,
+    fontSize: 14,
   },
   name: { fontSize: 20, fontWeight: "700" },
   info: { fontSize: 14, color: "#555" },
