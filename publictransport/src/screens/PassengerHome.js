@@ -5,6 +5,8 @@ import MapView, { Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
 import { getUser } from "../utils/storage";
 import { DUMMY_BUSES, getNearbyStops } from "../utils/busData";
+import * as Location from "expo-location";
+
 
 export default function PassengerHome({ navigation }) {
   const [passenger, setPassenger] = useState({});
@@ -54,6 +56,25 @@ export default function PassengerHome({ navigation }) {
       <Text style={styles.busSubtitle}>ETA: {item.etaMin} min • Seats: {item.seatsAvailable}</Text>
     </TouchableOpacity>
   );
+  const showLiveLocation = async () => {
+  let { status } = await Location.requestForegroundPermissionsAsync();
+  if (status !== "granted") {
+    Alert.alert("Permission Denied", "Enable location services");
+    return;
+  }
+
+  let location = await Location.getCurrentPositionAsync({});
+  
+  setRegion({
+    latitude: location.coords.latitude,
+    longitude: location.coords.longitude,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+
+  Alert.alert("Live Location Updated!");
+};
+
 
   return (
     <View style={styles.container}>
@@ -78,7 +99,12 @@ export default function PassengerHome({ navigation }) {
       {/* Shortcuts */}
       <View style={styles.shortcutRow}>
         <TouchableOpacity style={styles.shortcut} onPress={openNearby}><Ionicons name="location-outline" size={22} /><Text>Nearby Stops</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("PassengerHome") }><Ionicons name="navigate-outline" size={22} /><Text>Live Location</Text></TouchableOpacity>
+       <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("TrackDriverLocation") }>
+  <Ionicons name="navigate-outline" size={22} />
+  <Text>Track Location</Text>
+</TouchableOpacity>
+
+
         <TouchableOpacity style={styles.shortcut} onPress={openRoutePlanner}><Ionicons name="calendar-outline" size={22} /><Text>Plan Route</Text></TouchableOpacity>
         <TouchableOpacity style={styles.shortcut} onPress={() => Alert.alert("Arrival reminder", "Feature coming soon") }><Ionicons name="alarm-outline" size={22} /><Text>ETA Reminder</Text></TouchableOpacity>
       </View>

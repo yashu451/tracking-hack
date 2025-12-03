@@ -18,6 +18,7 @@ import BusDetails from "../screens/BusDetails";
 import TripHistory from "../screens/TripHistory";
 import SOSScreen from "../screens/SOSScreen";
 import FeedbackScreen from "../screens/FeedbackScreen";
+import TrackDriverLocation from "../screens/TrackDriverLocation";
 
 // Driver Screens
 import DriverHome from "../screens/DriverHome";
@@ -50,6 +51,8 @@ export default function RootNavigator() {
         <Stack.Screen name="TripHistory" component={TripHistory} />
         <Stack.Screen name="SOSScreen" component={SOSScreen} />
         <Stack.Screen name="FeedbackScreen" component={FeedbackScreen} />
+        
+<Stack.Screen name="TrackDriverLocation" component={TrackDriverLocation} />
 
         {/* Driver */}
         <Stack.Screen name="DriverHome" component={DriverHome} />
