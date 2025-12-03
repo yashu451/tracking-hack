@@ -22,6 +22,7 @@ import FeedbackScreen from "../screens/FeedbackScreen";
 // Driver Screens
 import DriverHome from "../screens/DriverHome";
 import DriverProfile from "../screens/DriverProfile";
+import DriverTrip from "../screens/DriverTrip";
 import DriverTripHistory from "../screens/DriverTripHistory";
 import DriverRouteMap from "../screens/DriverRouteMap";
 import BreakdownReport from "../screens/BreakdownReport";
@@ -53,6 +54,7 @@ export default function RootNavigator() {
         {/* Driver */}
         <Stack.Screen name="DriverHome" component={DriverHome} />
         <Stack.Screen name="DriverProfile" component={DriverProfile} />
+        <Stack.Screen name="DriverTrip" component={DriverTrip} />
         <Stack.Screen name="DriverTripHistory" component={DriverTripHistory} />
         <Stack.Screen name="DriverRouteMap" component={DriverRouteMap} />
         <Stack.Screen name="BreakdownReport" component={BreakdownReport} />

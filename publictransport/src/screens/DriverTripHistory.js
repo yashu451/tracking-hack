@@ -20,8 +20,8 @@ export default function DriverTripHistory() {
         <View style={styles.card}>
           <Text style={styles.route}>{new Date(item.startedAt).toLocaleString()}</Text>
           <Text>{item.positions?.length || 0} GPS points</Text>
-          <TouchableOpacity style={styles.btn} onPress={() => alert("View details (demo)")}>
-            <Text style={{ color: "#fff" }}>View</Text>
+          <TouchableOpacity style={styles.btn} onPress={() => alert("Open details (demo)")}>
+            <Text style={{ color:"#fff" }}>View</Text>
           </TouchableOpacity>
         </View>
       )} ListEmptyComponent={<Text style={{color:"#666"}}>No trips recorded</Text>} />

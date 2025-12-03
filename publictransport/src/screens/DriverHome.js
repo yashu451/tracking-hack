@@ -1,13 +1,19 @@
 // src/screens/DriverHome.js
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, BackHandler } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  BackHandler,
+} from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function DriverHome({ navigation }) {
   const [driver, setDriver] = useState({});
-
   const [location, setLocation] = useState({
     latitude: 12.9716,
     longitude: 77.5946,
@@ -22,117 +28,148 @@ export default function DriverHome({ navigation }) {
     })();
   }, []);
 
-  const exitApp = () => BackHandler.exitApp();
+  const logout = () => {
+  navigation.replace("RoleSelect"); // go back to role select
+};
+
+
+  const startTrip = () => navigation.navigate("DriverTrip");
+
+  const exitApp = () => {
+    BackHandler.exitApp();
+  };
+
+  const sendSOS = () => Alert.alert("SOS Sent", "Emergency alert sent to control room");
+  const reportBreakdown = () => Alert.alert("Breakdown", "Breakdown report sent to depot");
+  const callAdmin = () => Alert.alert("Admin Contact", driver.adminPhone || "No admin contact available");
 
   return (
     <View style={styles.container}>
 
-      {/* HEADER */}
+      {/* Top Navigation Bar */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={exitApp}>
+          <Ionicons name="arrow-back-circle-outline" size={34} color="#fff" />
+        </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Driver Dashboard</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("DriverSettings")}>
-          <Ionicons name="settings-outline" size={26} color="#fff" />
+
+        <TouchableOpacity onPress={logout}>
+          <Ionicons name="log-out-outline" size={30} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      {/* DRIVER INFO CARD */}
-      <View style={styles.infoCard}>
-        <Ionicons name="bus-sharp" size={55} color="#0066CC" />
-        <View style={{ marginLeft: 12 }}>
-          <Text style={styles.name}>{driver.name || "Driver Name"}</Text>
-          <Text style={styles.text}>Vehicle No: {driver.vehicle || "---"}</Text>
-          <Text style={styles.text}>Vehicle Type: {driver.vehicleType || "BMTC Bus"}</Text>
-          <Text style={styles.text}>Route: {driver.routeName || "Not Assigned"}</Text>
-          <Text style={styles.text}>Departure: {driver.departureTime || "00:00"}</Text>
+      {/* Driver Info */}
+      <View style={styles.driverCard}>
+        <Ionicons name="bus-outline" size={60} color="#0066CC" />
+        <View style={styles.infoColumn}>
+          <Text style={styles.driverName}>{driver.name || "Driver Name"}</Text>
+          <Text style={styles.detail}>Vehicle No: {driver.vehicle || "—"}</Text>
+          <Text style={styles.detail}>Vehicle Type: {driver.vehicleType || "City Bus"}</Text>
+          <Text style={styles.detail}>Route: {driver.routeName || "Not Assigned"}</Text>
+          <Text style={styles.detail}>Departure: {driver.departureTime || "—"}</Text>
         </View>
       </View>
 
-      {/* LIVE MAP */}
-      <Text style={styles.sectionTitle}>Live Location</Text>
+      {/* Map Live Location */}
       <MapView style={styles.map} region={location}>
-        <Marker coordinate={location} title="You are here" />
+        <Marker coordinate={location} title="Your Bus" />
       </MapView>
 
-      {/* QUICK ACTIONS */}
-      <Text style={styles.sectionTitle}>Quick Actions</Text>
+      {/* Start Trip Button */}
+      <TouchableOpacity style={styles.startTripBtn} onPress={startTrip}>
+        <Text style={styles.startText}>Start Trip</Text>
+      </TouchableOpacity>
 
-      <View style={styles.quickRow}>
-        <TouchableOpacity style={styles.quickBtn}>
-          <Ionicons name="construct-outline" size={22} color="#000" />
-          <Text style={styles.btnText}>Breakdown</Text>
+      {/* Quick Action Row */}
+      <View style={styles.quickActionsRow}>
+        <TouchableOpacity style={styles.actionBtn} onPress={sendSOS}>
+          <Ionicons name="alert-circle-outline" size={28} color="#C62828" />
+          <Text style={styles.actionText}>SOS</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.quickBtn}>
-          <Ionicons name="alert-circle-outline" size={22} color="red" />
-          <Text style={styles.btnText}>SOS Alert</Text>
+        <TouchableOpacity style={styles.actionBtn} onPress={reportBreakdown}>
+          <Ionicons name="construct-outline" size={28} color="#F57C00" />
+          <Text style={styles.actionText}>Breakdown</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.quickBtn}
+          style={styles.actionBtn}
           onPress={() => navigation.navigate("DriverTripHistory")}
         >
-          <Ionicons name="time-outline" size={22} color="#000" />
-          <Text style={styles.btnText}>History</Text>
+          <Ionicons name="time-outline" size={28} color="#0066CC" />
+          <Text style={styles.actionText}>History</Text>
         </TouchableOpacity>
       </View>
-
-      {/* EXIT APP BUTTON */}
-      <TouchableOpacity style={styles.exitBtn} onPress={exitApp}>
-        <Ionicons name="exit-outline" size={22} color="#fff" />
-        <Text style={styles.exitText}>Exit App</Text>
-      </TouchableOpacity>
 
     </View>
   );
 }
 
+// Styles
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+  container: { flex: 1, backgroundColor: "#F4F9FF" },
+
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 12,
+    padding: 14,
     backgroundColor: "#0066CC",
     alignItems: "center",
   },
-  headerTitle: { color: "#fff", fontSize: 20, fontWeight: "bold" },
-  infoCard: {
-    flexDirection: "row",
-    backgroundColor: "#E9F4FF",
-    margin: 10,
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
+
+  headerTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "700",
   },
-  name: { fontWeight: "700", fontSize: 18, marginBottom: 6 },
-  text: { fontSize: 14, color: "#444" },
-  sectionTitle: { fontSize: 16, fontWeight: "700", marginLeft: 10, marginTop: 12 },
-  map: {
-    height: 200,
-    margin: 10,
+
+  driverCard: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    margin: 12,
+    padding: 15,
     borderRadius: 12,
-  },
-  quickRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    marginVertical: 12,
-  },
-  quickBtn: {
+    elevation: 3,
     alignItems: "center",
-    backgroundColor: "#E0E0E0",
-    padding: 12,
-    borderRadius: 10,
-    width: "28%",
   },
-  btnText: { fontSize: 12, marginTop: 6, fontWeight: "600" },
-  exitBtn: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#FF3B30",
-    margin: 14,
+
+  infoColumn: { marginLeft: 14 },
+
+  driverName: { fontSize: 20, fontWeight: "800" },
+
+  detail: { fontSize: 14, marginTop: 3, color: "#444" },
+
+  map: {
+    height: 220,
+    marginHorizontal: 12,
+    borderRadius: 12,
+    marginTop: 10,
+  },
+
+  startTripBtn: {
+    backgroundColor: "#008C3A",
+    margin: 12,
     padding: 14,
     borderRadius: 10,
+    alignItems: "center",
   },
-  exitText: { color: "#fff", marginLeft: 8, fontSize: 15, fontWeight: "700" },
+
+  startText: { color: "white", fontWeight: "800", fontSize: 16 },
+
+  quickActionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginTop: 18,
+  },
+
+  actionBtn: {
+    alignItems: "center",
+    width: "28%",
+    padding: 12,
+    backgroundColor: "#E8F3FF",
+    borderRadius: 12,
+  },
+
+  actionText: { marginTop: 6, fontWeight: "600", color: "#333" },
 });
