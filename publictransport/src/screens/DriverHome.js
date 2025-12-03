@@ -1,131 +1,177 @@
-// src/screens/DriverHomeScreen.js
-import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from "react-native";
+// src/screens/DriverHome.js
+import React, { useEffect, useState, useRef } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Vibration } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { Ionicons } from "@expo/vector-icons";
-import { getUser } from "../utils/storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export default function DriverHomeScreen() {
+/*
+ - Shows driver profile summary, depot/admin contact
+ - Shows pending ride requests (from AsyncStorage "ride_requests")
+ - Accept/Reject requests which move accepted to "accepted_rides"
+ - Start/Stop Trip quick nav to DriverTrip (detailed trip dashboard)
+ - Quick actions: SOS, Call Admin, Report Breakdown
+*/
+
+export default function DriverHome({ navigation }) {
   const [driver, setDriver] = useState({});
-  const [status, setStatus] = useState("Available"); // Available / On Trip
-  const [location, setLocation] = useState({
-    latitude: 12.9716,
-    longitude: 77.5946,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
-  });
-
-  const [passengers, setPassengers] = useState([
-    { id: "1", name: "Alice", pickup: "Stop A", drop: "Stop B" },
-    { id: "2", name: "Bob", pickup: "Stop C", drop: "Stop D" },
-    { id: "3", name: "Charlie", pickup: "Stop E", drop: "Stop F" },
-  ]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [accepted, setAccepted] = useState([]);
+  const [location, setLocation] = useState({ latitude: 12.9716, longitude: 77.5946, latitudeDelta: 0.01, longitudeDelta: 0.01 });
 
   useEffect(() => {
-    const loadDriver = async () => {
-      const user = await getUser();
-      setDriver(user);
-    };
-    loadDriver();
+    (async () => {
+      const raw = await AsyncStorage.getItem("user");
+      if (raw) setDriver(JSON.parse(raw));
+      await loadRequests();
+      await loadAccepted();
+    })();
   }, []);
 
-  // Dummy function to simulate movement
-  const simulateMovement = () => {
-    setLocation(prev => ({
-      ...prev,
-      latitude: prev.latitude + 0.0005,
-      longitude: prev.longitude + 0.0005,
-    }));
+  const loadRequests = async () => {
+    const raw = await AsyncStorage.getItem("ride_requests");
+    setPendingRequests(raw ? JSON.parse(raw) : []);
   };
 
-  const toggleTrip = () => {
-    if (status === "Available") {
-      setStatus("On Trip");
-      Alert.alert("Trip Started", "You are now on a trip!");
-    } else {
-      setStatus("Available");
-      Alert.alert("Trip Completed", "You have completed the trip!");
-    }
+  const loadAccepted = async () => {
+    const raw = await AsyncStorage.getItem("accepted_rides");
+    setAccepted(raw ? JSON.parse(raw) : []);
   };
 
-  const renderPassenger = ({ item }) => (
-    <View style={styles.passengerCard}>
-      <Text style={styles.passengerName}>{item.name}</Text>
-      <Text style={styles.passengerText}>Pickup: {item.pickup}</Text>
-      <Text style={styles.passengerText}>Drop: {item.drop}</Text>
+  const saveAccepted = async (arr) => {
+    await AsyncStorage.setItem("accepted_rides", JSON.stringify(arr));
+    setAccepted(arr);
+  };
+
+  const removePending = async (id) => {
+    const raw = await AsyncStorage.getItem("ride_requests");
+    const arr = raw ? JSON.parse(raw) : [];
+    const updated = arr.filter(r => r.id !== id);
+    await AsyncStorage.setItem("ride_requests", JSON.stringify(updated));
+    setPendingRequests(updated);
+  };
+
+  const acceptRequest = async (req) => {
+    const newAccepted = [req, ...accepted];
+    await saveAccepted(newAccepted);
+    await removePending(req.id);
+    Vibration.vibrate(200);
+    Alert.alert("Accepted", `Accepted request from ${req.id || req.name || "passenger"}`);
+  };
+
+  const rejectRequest = async (req) => {
+    await removePending(req.id);
+    Alert.alert("Rejected", `Rejected request from ${req.id || req.name || "passenger"}`);
+  };
+
+  const startTrip = () => navigation.navigate("DriverTrip");
+  const openProfile = () => navigation.navigate("DriverProfile");
+
+  const reportBreakdown = () => Alert.alert("Breakdown", "Reported breakdown to admin (demo)");
+  const callAdmin = () => {
+    const phone = driver.adminPhone || driver.depotContact || "112";
+    // use Linking in UI; here demo alert
+    Alert.alert("Call Admin", `Call ${phone}`);
+  };
+  const sendSOS = () => Alert.alert("SOS", "SOS sent to depot/admin (demo)");
+
+  const renderPending = ({ item }) => (
+    <View style={styles.requestCard}>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.reqTitle}>{item.pickup} → {item.drop}</Text>
+        <Text style={styles.reqSub}>Passengers: {item.passengers || 1}</Text>
+        <Text style={styles.reqSub}>Time: {item.time ? new Date(item.time).toLocaleString() : "-"}</Text>
+      </View>
+      <View style={{ justifyContent: "space-between" }}>
+        <TouchableOpacity style={styles.acceptBtn} onPress={() => acceptRequest(item)}><Text style={styles.acceptText}>Accept</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.rejectBtn} onPress={() => rejectRequest(item)}><Text style={styles.rejectText}>Reject</Text></TouchableOpacity>
+      </View>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      {/* Driver Info */}
-      <View style={styles.profileCard}>
-        <Ionicons name="person-circle-outline" size={60} color="#1E88E5" />
-        <View style={{ marginLeft: 12 }}>
-          <Text style={styles.name}>{driver.name || "Driver Name"}</Text>
-          <Text style={styles.info}>Vehicle: {driver.vehicle || "ABC123"}</Text>
-          <Text style={styles.info}>Status: {status}</Text>
+      {/* header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={openProfile}><Ionicons name="person-circle-outline" size={34} color="#fff" /></TouchableOpacity>
+        <Text style={styles.headerTitle}>Driver Home</Text>
+        <View style={{ flexDirection: "row" }}>
+          <TouchableOpacity onPress={sendSOS} style={{ marginRight: 12 }}><Ionicons name="alert-circle" size={26} color="#fff" /></TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate("DriverSettings")}><Ionicons name="settings-outline" size={26} color="#fff" /></TouchableOpacity>
         </View>
       </View>
 
-      {/* Map */}
-      <MapView style={styles.map} region={location}>
-        <Marker coordinate={location} title="You" description="Current Location" />
-      </MapView>
-
-      {/* Buttons */}
-      <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.button} onPress={toggleTrip}>
-          <Text style={styles.buttonText}>{status === "Available" ? "Start Trip" : "Stop Trip"}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.button} onPress={simulateMovement}>
-          <Text style={styles.buttonText}>Simulate Move</Text>
-        </TouchableOpacity>
+      {/* profile card */}
+      <View style={styles.profileCard}>
+        <Ionicons name="bus" size={52} color="#1976D2" />
+        <View style={{ marginLeft: 12, flex: 1 }}>
+          <Text style={styles.name}>{driver.name || "Driver Name"}</Text>
+          <Text style={styles.info}>{driver.vehicle || "Vehicle: —"} • {driver.routeAssigned || driver.routeAssigned}</Text>
+          <Text style={styles.info}>Depot: {driver.depotContact || "—"}</Text>
+        </View>
+        <TouchableOpacity style={styles.startBtn} onPress={startTrip}><Text style={styles.startBtnText}>Start Trip</Text></TouchableOpacity>
       </View>
 
-      {/* Passenger List */}
-      <Text style={styles.sectionTitle}>Passengers</Text>
+      {/* map - small preview */}
+      <MapView style={styles.map} region={location}>
+        <Marker coordinate={location} title="You" />
+      </MapView>
+
+      {/* pending requests */}
+      <Text style={styles.sectionTitle}>Pending Requests</Text>
       <FlatList
-        data={passengers}
-        keyExtractor={(item) => item.id}
-        renderItem={renderPassenger}
-        style={styles.passengerList}
+        data={pendingRequests}
+        keyExtractor={(i) => i.id}
+        renderItem={renderPending}
+        ListEmptyComponent={<Text style={{ padding: 12, color: "#666" }}>No pending requests</Text>}
+        style={styles.list}
       />
+
+      {/* accepted */}
+      <Text style={styles.sectionTitle}>Accepted Rides</Text>
+      <FlatList
+        data={accepted}
+        keyExtractor={(i) => i.id}
+        renderItem={({ item }) => (
+          <View style={styles.acceptedCard}>
+            <Text style={styles.reqTitle}>{item.pickup} → {item.drop}</Text>
+            <Text style={styles.reqSub}>Time: {item.time ? new Date(item.time).toLocaleString() : "-"}</Text>
+          </View>
+        )}
+        ListEmptyComponent={<Text style={{ padding: 12, color: "#666" }}>No accepted rides</Text>}
+        style={styles.list}
+      />
+
+      {/* quick actions */}
+      <View style={styles.quickRow}>
+        <TouchableOpacity style={styles.quickBtn} onPress={callAdmin}><Ionicons name="call" size={18} /><Text>Call Admin</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.quickBtn} onPress={reportBreakdown}><Ionicons name="warning" size={18} /><Text>Breakdown</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.quickBtn} onPress={() => navigation.navigate("DriverTripHistory")}><Ionicons name="time-outline" size={18} /><Text>History</Text></TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  profileCard: {
-    flexDirection: "row",
-    padding: 12,
-    backgroundColor: "#fff",
-    margin: 10,
-    borderRadius: 12,
-    alignItems: "center",
-    elevation: 3,
-  },
-  name: { fontSize: 20, fontWeight: "700" },
-  info: { fontSize: 14, color: "#555" },
-  map: { flex: 1, margin: 10, borderRadius: 12 },
-  buttonRow: { flexDirection: "row", justifyContent: "space-around", marginVertical: 10 },
-  button: {
-    padding: 12,
-    backgroundColor: "#1E88E5",
-    borderRadius: 10,
-    width: "45%",
-    alignItems: "center",
-  },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  sectionTitle: { fontSize: 18, fontWeight: "700", marginLeft: 12, marginTop: 10 },
-  passengerList: { marginHorizontal: 10, marginBottom: 10 },
-  passengerCard: {
-    padding: 10,
-    backgroundColor: "#f1f1f1",
-    borderRadius: 10,
-    marginBottom: 8,
-  },
-  passengerName: { fontSize: 16, fontWeight: "700" },
-  passengerText: { fontSize: 14, color: "#333" },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 12, backgroundColor: "#1E88E5" },
+  headerTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  profileCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", margin: 10, padding: 12, borderRadius: 12, elevation: 2 },
+  name: { fontSize: 18, fontWeight: "700" },
+  info: { color: "#555" },
+  startBtn: { backgroundColor: "#FF7043", paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8 },
+  startBtnText: { color: "#fff", fontWeight: "700" },
+  map: { height: 140, marginHorizontal: 10, borderRadius: 12, marginBottom: 8 },
+  sectionTitle: { fontSize: 16, fontWeight: "700", marginLeft: 12, marginTop: 10 },
+  list: { maxHeight: 150, marginHorizontal: 10 },
+  requestCard: { flexDirection: "row", backgroundColor: "#fff", padding: 10, marginTop: 8, borderRadius: 10, elevation: 1 },
+  reqTitle: { fontWeight: "700" },
+  reqSub: { color: "#444", marginTop: 4 },
+  acceptBtn: { backgroundColor: "#34C759", padding: 8, borderRadius: 8, marginBottom: 6 },
+  acceptText: { color: "#fff", fontWeight: "700" },
+  rejectBtn: { backgroundColor: "#FF3B30", padding: 8, borderRadius: 8 },
+  rejectText: { color: "#fff", fontWeight: "700" },
+  acceptedCard: { backgroundColor: "#f7f7f7", padding: 10, marginTop: 8, borderRadius: 8 },
+  quickRow: { flexDirection: "row", justifyContent: "space-around", padding: 12, backgroundColor: "#fff", marginTop: 8 },
+  quickBtn: { alignItems: "center", width: "30%", padding: 8, borderRadius: 8, backgroundColor: "#f1f1f1" },
 });

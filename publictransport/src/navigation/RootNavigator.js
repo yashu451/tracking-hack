@@ -3,12 +3,13 @@ import React from "react";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+// Auth & Common
 import SplashScreen from "../screens/SplashScreen";
 import RoleSelectScreen from "../screens/RoleSelectScreen";
 import AuthScreen from "../screens/AuthScreen";
-import DriverHome from "../screens/DriverHome";
-import PassengerHome from "../screens/PassengerHome";
 
+// Passenger
+import PassengerHome from "../screens/PassengerHome";
 import PassengerProfile from "../screens/PassengerProfile";
 import PassengerSettings from "../screens/PassengerSettings";
 import RoutePlanner from "../screens/RoutePlanner";
@@ -18,19 +19,28 @@ import TripHistory from "../screens/TripHistory";
 import SOSScreen from "../screens/SOSScreen";
 import FeedbackScreen from "../screens/FeedbackScreen";
 
+// Driver Screens
+import DriverHome from "../screens/DriverHome";
+import DriverProfile from "../screens/DriverProfile";
+import DriverTripHistory from "../screens/DriverTripHistory";
+import DriverRouteMap from "../screens/DriverRouteMap";
+import BreakdownReport from "../screens/BreakdownReport";
+import DriverSOS from "../screens/DriverSOS";
+
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Splash">
+        
+        {/* Common */}
         <Stack.Screen name="Splash" component={SplashScreen} />
         <Stack.Screen name="RoleSelect" component={RoleSelectScreen} />
         <Stack.Screen name="Auth" component={AuthScreen} />
-        <Stack.Screen name="DriverHome" component={DriverHome} />
-        <Stack.Screen name="PassengerHome" component={PassengerHome} />
 
-        {/* Passenger feature screens */}
+        {/* Passenger */}
+        <Stack.Screen name="PassengerHome" component={PassengerHome} />
         <Stack.Screen name="PassengerProfile" component={PassengerProfile} />
         <Stack.Screen name="PassengerSettings" component={PassengerSettings} />
         <Stack.Screen name="RoutePlanner" component={RoutePlanner} />
@@ -39,6 +49,15 @@ export default function RootNavigator() {
         <Stack.Screen name="TripHistory" component={TripHistory} />
         <Stack.Screen name="SOSScreen" component={SOSScreen} />
         <Stack.Screen name="FeedbackScreen" component={FeedbackScreen} />
+
+        {/* Driver */}
+        <Stack.Screen name="DriverHome" component={DriverHome} />
+        <Stack.Screen name="DriverProfile" component={DriverProfile} />
+        <Stack.Screen name="DriverTripHistory" component={DriverTripHistory} />
+        <Stack.Screen name="DriverRouteMap" component={DriverRouteMap} />
+        <Stack.Screen name="BreakdownReport" component={BreakdownReport} />
+        <Stack.Screen name="DriverSOS" component={DriverSOS} />
+
       </Stack.Navigator>
     </NavigationContainer>
   );
