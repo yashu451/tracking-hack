@@ -3,9 +3,13 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
-export default function BusDetails({ route }) {
+export default function BusDetails({ route, navigation }) {
+
   const bus = route.params?.bus || {};
-  const handleTrack = () => alert(`Now tracking Bus ${bus.id}`);
+  const handleTrack = () => {
+  navigation.navigate("TrackBus", { busId: bus.id });
+};
+
 
   return (
     <View style={styles.container}>
