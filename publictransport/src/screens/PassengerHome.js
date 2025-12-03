@@ -101,7 +101,7 @@ export default function PassengerHome({ navigation }) {
         <TouchableOpacity style={styles.shortcut} onPress={openNearby}><Ionicons name="location-outline" size={22} /><Text>Nearby Stops</Text></TouchableOpacity>
        <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("TrackDriverLocation") }>
   <Ionicons name="navigate-outline" size={22} />
-  <Text>Track Location</Text>
+  <Text>Live Location</Text>
 </TouchableOpacity>
 
 
