@@ -6,6 +6,22 @@ import { Ionicons } from "@expo/vector-icons";
 import { getUser } from "../utils/storage";
 import { DUMMY_BUSES, getNearbyStops } from "../utils/busData";
 import * as Location from "expo-location";
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Earth radius in KM
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Number((R * c).toFixed(2)); // Distance in KM
+};
+
+
+
 
 
 export default function PassengerHome({ navigation }) {
@@ -19,7 +35,7 @@ export default function PassengerHome({ navigation }) {
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   });
-
+  
   useEffect(() => {
     (async () => {
       const u = await getUser();
@@ -88,7 +104,9 @@ const updateLocation = (lat, lng) => {
   }, []);
 
   const openRoutePlanner = () => navigation.navigate("RoutePlanner");
-  const openNearby = () => navigation.navigate("NearByStops");
+  const openNearby = () =>
+  navigation.navigate("NearByStops", { userLocation: region });
+
   const openTripHistory = () => navigation.navigate("TripHistory");
   const openSOS = () => navigation.navigate("SOSScreen");
 
