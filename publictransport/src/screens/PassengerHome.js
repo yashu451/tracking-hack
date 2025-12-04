@@ -24,9 +24,60 @@ export default function PassengerHome({ navigation }) {
     (async () => {
       const u = await getUser();
       if (u) setPassenger(u);
-      setNearStops(getNearbyStops());
+      
     })();
   }, []);
+  // REQUEST LOCATION PERMISSION + LIVE USER LOCATION
+useEffect(() => {
+  (async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      alert("Location permission required!");
+      return;
+    }
+
+    let loc = await Location.getCurrentPositionAsync({});
+    updateLocation(loc.coords.latitude, loc.coords.longitude);
+
+    // 🔄 Live location watch
+    Location.watchPositionAsync(
+      { accuracy: Location.Accuracy.High, distanceInterval: 20 },
+      (loc) => {
+        updateLocation(loc.coords.latitude, loc.coords.longitude);
+      }
+    );
+  })();
+}, []);
+
+const updateLocation = (lat, lng) => {
+  setRegion({
+    latitude: lat,
+    longitude: lng,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+
+  // Move buses around user based on live location
+  const updatedBuses = DUMMY_BUSES.map(b => ({
+    ...b,
+    lat: lat + (Math.random() - 0.5) * 0.003, 
+    lng: lng + (Math.random() - 0.5) * 0.003,
+    etaMin: Math.max(1, b.etaMin - 1)
+  }));
+  setBuses(updatedBuses);
+
+  // Automatically generate nearby stops based on user location
+  
+
+  // 🔍 NEW → Generate real nearby stops based on live location
+  const autoStops = [
+    { id: "ST01", name: "Stop A", lat: lat + 0.0009, lng: lng + 0.001 },
+    { id: "ST02", name: "Stop B", lat: lat - 0.001, lng: lng + 0.0008 },
+    { id: "ST03", name: "Stop C", lat: lat + 0.0011, lng: lng - 0.0007 },
+  ];
+  setNearStops(autoStops);
+};
+
 
   // simulate live updates (buses moving slightly)
   useEffect(() => {
@@ -42,13 +93,55 @@ export default function PassengerHome({ navigation }) {
   const openSOS = () => navigation.navigate("SOSScreen");
 
   const handleSearch = () => {
-    if (!query.trim()) return Alert.alert("Search", "Enter bus, route or stop");
-    // simple filter demo
-    const q = query.toLowerCase();
-    const results = DUMMY_BUSES.filter(b => b.id.includes(q) || b.route.toLowerCase().includes(q));
-    setBuses(results.length ? results : DUMMY_BUSES);
-    setQuery("");
-  };
+  if (!query.trim())
+    return Alert.alert("Search", "Enter bus, route or stop");
+
+  const q = query.toLowerCase();
+
+  // Filter matching buses
+  const filteredBuses = buses.filter(
+    (b) =>
+      b.id.toLowerCase().includes(q) ||
+      b.route.toLowerCase().includes(q)
+  );
+
+  if (filteredBuses.length > 0) {
+    const firstBus = filteredBuses[0];
+
+    // Focus map on first result
+    setRegion({
+      latitude: firstBus.lat,
+      longitude: firstBus.lng,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    });
+
+    setBuses(filteredBuses); // 👈 show only searched bus in list
+    return;
+  }
+
+  // Filter nearby stops
+  const filteredStops = nearStops.filter((s) =>
+    s.name.toLowerCase().includes(q)
+  );
+
+  if (filteredStops.length > 0) {
+    const stop = filteredStops[0];
+
+    setRegion({
+      latitude: stop.lat,
+      longitude: stop.lng,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    });
+
+    setNearStops(filteredStops); // 👈 show only matching stop
+    return;
+  }
+
+  Alert.alert("No Results", "Try different bus / route / stop name");
+};
+
 
   const renderBus = ({ item }) => (
     <TouchableOpacity style={styles.busCard} onPress={() => navigation.navigate("BusDetails", { bus: item })}>
@@ -92,7 +185,14 @@ export default function PassengerHome({ navigation }) {
 
       {/* Search */}
       <View style={styles.searchRow}>
-        <TextInput placeholder="Search bus / route / stop" value={query} onChangeText={setQuery} style={styles.searchInput} />
+        <TextInput placeholder="Search bus / route / stop" value={query} onChangeText={(text) => {
+  setQuery(text);
+  if (text.length === 0) {
+    setBuses(DUMMY_BUSES);  // reset list
+    setNearStops(getNearbyStops());
+  }
+}}
+ style={styles.searchInput} />
         <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}><Ionicons name="search" size={20} color="#fff" /></TouchableOpacity>
       </View>
 
@@ -115,10 +215,33 @@ export default function PassengerHome({ navigation }) {
       </View>
 
       {/* Map */}
-      <MapView style={styles.map} region={region} onRegionChangeComplete={setRegion}>
-        {buses.map(b => <Marker key={b.id} coordinate={{ latitude: b.lat, longitude: b.lng }} title={`Bus ${b.id}`} description={`${b.route} • ETA ${b.etaMin} min`} />)}
-        {nearStops.map(s => <Marker key={s.id} coordinate={{ latitude: s.lat, longitude: s.lng }} title={s.name} pinColor="green" />)}
-      </MapView>
+      <MapView
+  style={styles.map}
+  region={region}
+  showsUserLocation={true}
+  followsUserLocation={true}
+>
+  {/* Bus Markers */}
+  {buses.map((b) => (
+    <Marker
+      key={b.id}
+      coordinate={{ latitude: b.lat, longitude: b.lng }}
+      title={`Bus ${b.id}`}
+      description={`${b.route} • ETA ${b.etaMin} min`}
+    />
+  ))}
+
+  {/* Dynamic Nearby Stops */}
+  {nearStops.map((stop) => (
+    <Marker
+      key={stop.id}
+      coordinate={{ latitude: stop.lat, longitude: stop.lng }}
+      title={stop.name}
+      pinColor="green"
+    />
+  ))}
+</MapView>
+
 
       {/* Live buses list */}
       <View style={styles.livePanel}>
