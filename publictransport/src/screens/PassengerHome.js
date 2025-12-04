@@ -106,7 +106,12 @@ export default function PassengerHome({ navigation }) {
 
 
         <TouchableOpacity style={styles.shortcut} onPress={openRoutePlanner}><Ionicons name="calendar-outline" size={22} /><Text>Plan Route</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.shortcut} onPress={() => Alert.alert("Arrival reminder", "Feature coming soon") }><Ionicons name="alarm-outline" size={22} /><Text>ETA Reminder</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.shortcut} 
+  onPress={() => navigation.navigate("ETAViewScreen")}>
+  <Ionicons name="alarm-outline" size={22} />
+  <Text>ETA Reminder</Text>
+</TouchableOpacity>
+
       </View>
 
       {/* Map */}
