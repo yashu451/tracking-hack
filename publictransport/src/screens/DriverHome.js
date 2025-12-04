@@ -1,175 +1,230 @@
 // src/screens/DriverHome.js
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  BackHandler,
-} from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
+import * as Location from "expo-location";
+// ⬇️ Add this here
+import { DRIVER_TRIPS, getNearbyStops } from "../utils/driverData";
 
-export default function DriverHome({ navigation }) {
-  const [driver, setDriver] = useState({});
-  const [location, setLocation] = useState({
-    latitude: 12.9716,
-    longitude: 77.5946,
+
+
+export default function DriverHome({ navigation, route }) {
+  const driverName = route?.params?.driverName || "Driver";
+  const vehicleNo = route?.params?.vehicleNo || "—";
+  const vehicleType = route?.params?.vehicleType || "City Bus";
+  const routeName = route?.params?.routeName || "Not Assigned";
+
+  const [region, setRegion] = useState({
+    latitude: 12.3055,
+    longitude: 76.6395,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   });
 
+  const [tripActive, setTripActive] = useState(false);
+
   useEffect(() => {
+    let sub;
     (async () => {
-      const raw = await AsyncStorage.getItem("user");
-      if (raw) setDriver(JSON.parse(raw));
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      const loc = await Location.getCurrentPositionAsync({});
+      setRegion((prev) => ({
+        ...prev,
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      }));
+
+      sub = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          distanceInterval: 20,
+        },
+        (loc) => {
+          setRegion((prev) => ({
+            ...prev,
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          }));
+        }
+      );
     })();
+
+    return () => {
+      if (sub) sub.remove();
+    };
   }, []);
 
-  const logout = () => {
-  navigation.replace("RoleSelect"); // go back to role select
-};
-
-
-  const startTrip = () => navigation.navigate("DriverTrip");
-
-  const exitApp = () => {
-    BackHandler.exitApp();
+  const handleStartOrEndTrip = () => {
+    if (!tripActive) {
+      setTripActive(true);
+      navigation.navigate("DriverTrip", {
+        routeName,
+        vehicleNo,
+      });
+    } else {
+      setTripActive(false);
+    }
   };
-
-  const sendSOS = () => Alert.alert("SOS Sent", "Emergency alert sent to control room");
-  const reportBreakdown = () => Alert.alert("Breakdown", "Breakdown report sent to depot");
-  const callAdmin = () => Alert.alert("Admin Contact", driver.adminPhone || "No admin contact available");
 
   return (
     <View style={styles.container}>
-
-      {/* Top Navigation Bar */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={exitApp}>
-          <Ionicons name="arrow-back-circle-outline" size={34} color="#fff" />
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
         </TouchableOpacity>
-
-        <Text style={styles.headerTitle}>Driver Dashboard</Text>
-
-        <TouchableOpacity onPress={logout}>
-          <Ionicons name="log-out-outline" size={30} color="#fff" />
+        <Text style={styles.topTitle}>Driver Dashboard</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("DriverSettings")}>
+          <Ionicons name="settings" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
 
-      {/* Driver Info */}
-      <View style={styles.driverCard}>
-        <Ionicons name="bus-outline" size={60} color="#0066CC" />
-        <View style={styles.infoColumn}>
-          <Text style={styles.driverName}>{driver.name || "Driver Name"}</Text>
-          <Text style={styles.detail}>Vehicle No: {driver.vehicle || "—"}</Text>
-          <Text style={styles.detail}>Vehicle Type: {driver.vehicleType || "City Bus"}</Text>
-          <Text style={styles.detail}>Route: {driver.routeName || "Not Assigned"}</Text>
-          <Text style={styles.detail}>Departure: {driver.departureTime || "—"}</Text>
+      {/* Driver info card */}
+      <View style={styles.card}>
+        <Ionicons name="bus" size={46} color="#1976D2" style={{ marginRight: 12 }} />
+        <View style={{ flex: 1 }}>
+          <Text style={styles.driverName}>{driverName}</Text>
+          <Text style={styles.line}>Vehicle No: {vehicleNo}</Text>
+          <Text style={styles.line}>Vehicle Type: {vehicleType}</Text>
+          <Text style={styles.line}>Route: {routeName}</Text>
+        </View>
+        <View
+          style={[
+            styles.statusPill,
+            { backgroundColor: tripActive ? "#4CAF50" : "#B0BEC5" },
+          ]}
+        >
+          <Ionicons
+            name={tripActive ? "radio-button-on" : "radio-button-off"}
+            size={14}
+            color="#fff"
+          />
+          <Text style={styles.statusText}>{tripActive ? "On Trip" : "Idle"}</Text>
         </View>
       </View>
 
-      {/* Map Live Location */}
-      <MapView style={styles.map} region={location}>
-        <Marker coordinate={location} title="Your Bus" />
-      </MapView>
+      {/* Map */}
+      <View style={styles.mapWrapper}>
+        <MapView
+          style={styles.map}
+          region={region}
+          showsUserLocation={true}
+          followsUserLocation={true}
+        >
+          <Marker coordinate={region} title="Bus Location" description="You are here" />
+        </MapView>
+      </View>
 
-      {/* Start Trip Button */}
-      <TouchableOpacity style={styles.startTripBtn} onPress={startTrip}>
-        <Text style={styles.startText}>Start Trip</Text>
+      {/* Start / End Trip button */}
+      <TouchableOpacity
+        style={[
+          styles.startBtn,
+          { backgroundColor: tripActive ? "#E53935" : "#2E7D32" },
+        ]}
+        onPress={handleStartOrEndTrip}
+      >
+        <Text style={styles.startText}>
+          {tripActive ? "End Trip" : "Start Trip"}
+        </Text>
       </TouchableOpacity>
 
-      {/* Quick Action Row */}
-      <View style={styles.quickActionsRow}>
-        <TouchableOpacity style={styles.actionBtn} onPress={sendSOS}>
-          <Ionicons name="alert-circle-outline" size={28} color="#C62828" />
+      {/* Quick actions */}
+      <View style={styles.actionRow}>
+        <TouchableOpacity
+          style={styles.actionCard}
+          onPress={() => navigation.navigate("DriverSOS")}
+        >
+          <Ionicons name="alert-circle" size={24} color="#C62828" />
           <Text style={styles.actionText}>SOS</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionBtn} onPress={reportBreakdown}>
-          <Ionicons name="construct-outline" size={28} color="#F57C00" />
+        <TouchableOpacity
+          style={styles.actionCard}
+          onPress={() => navigation.navigate("BreakdownReport")}
+        >
+          <Ionicons name="construct" size={24} color="#FB8C00" />
           <Text style={styles.actionText}>Breakdown</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.actionBtn}
+          style={styles.actionCard}
           onPress={() => navigation.navigate("DriverTripHistory")}
         >
-          <Ionicons name="time-outline" size={28} color="#0066CC" />
+          <Ionicons name="time" size={24} color="#1565C0" />
           <Text style={styles.actionText}>History</Text>
         </TouchableOpacity>
       </View>
-
     </View>
   );
 }
 
-// Styles
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F9FF" },
+  container: { flex: 1, backgroundColor: "#E3F2FD" },
 
-  header: {
+  topBar: {
     flexDirection: "row",
+    alignItems: "center",
     justifyContent: "space-between",
-    padding: 14,
-    backgroundColor: "#0066CC",
-    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: "#1976D2",
   },
+  topTitle: { color: "#fff", fontSize: 18, fontWeight: "700" },
 
-  headerTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
-  },
-
-  driverCard: {
-    flexDirection: "row",
+  card: {
+    margin: 12,
     backgroundColor: "#fff",
-    margin: 12,
-    padding: 15,
-    borderRadius: 12,
-    elevation: 3,
-    alignItems: "center",
-  },
-
-  infoColumn: { marginLeft: 14 },
-
-  driverName: { fontSize: 20, fontWeight: "800" },
-
-  detail: { fontSize: 14, marginTop: 3, color: "#444" },
-
-  map: {
-    height: 220,
-    marginHorizontal: 12,
-    borderRadius: 12,
-    marginTop: 10,
-  },
-
-  startTripBtn: {
-    backgroundColor: "#008C3A",
-    margin: 12,
+    borderRadius: 14,
     padding: 14,
-    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    elevation: 3,
+  },
+  driverName: { fontSize: 18, fontWeight: "700", marginBottom: 4 },
+  line: { fontSize: 13, color: "#455A64" },
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 20,
+    gap: 4,
+  },
+  statusText: { color: "#fff", fontSize: 11, fontWeight: "600" },
+
+  mapWrapper: {
+    marginHorizontal: 12,
+    borderRadius: 14,
+    overflow: "hidden",
+    height: 220,
+    backgroundColor: "#000",
+  },
+  map: { flex: 1 },
+
+  startBtn: {
+    marginHorizontal: 12,
+    marginTop: 12,
+    paddingVertical: 12,
+    borderRadius: 24,
     alignItems: "center",
   },
+  startText: { color: "#fff", fontSize: 18, fontWeight: "700" },
 
-  startText: { color: "white", fontWeight: "800", fontSize: 16 },
-
-  quickActionsRow: {
+  actionRow: {
     flexDirection: "row",
     justifyContent: "space-around",
     marginTop: 18,
   },
-
-  actionBtn: {
-    alignItems: "center",
+  actionCard: {
     width: "28%",
-    padding: 12,
-    backgroundColor: "#E8F3FF",
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+    elevation: 2,
   },
-
-  actionText: { marginTop: 6, fontWeight: "600", color: "#333" },
+  actionText: { marginTop: 4, fontSize: 13, fontWeight: "600" },
 });

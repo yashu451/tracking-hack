@@ -1,52 +1,101 @@
 // src/screens/DriverRouteMap.js
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 import MapView, { Marker } from "react-native-maps";
+import { Ionicons } from "@expo/vector-icons";
 
-export default function DriverRouteMap({ navigation }) {
+// Same places you used in DriverTrip / busData
+const DRIVER_STOPS = [
+  {
+    id: "1",
+    name: "KR Circle Stop",
+    place: "Near Mysore Palace",
+    lat: 12.3037,
+    lng: 76.6520,
+  },
+  {
+    id: "2",
+    name: "Suburban Bus Stand",
+    place: "Suburban Bus Stand, Mysore",
+    lat: 12.2966,
+    lng: 76.6551,
+  },
+  {
+    id: "3",
+    name: "Mall of Mysore Stop",
+    place: "Chamundi Hill Road",
+    lat: 12.2979,
+    lng: 76.6640,
+  },
+];
+
+export default function DriverRouteMap({ route }) {
+  const nextStop = route?.params?.nextStop || DRIVER_STOPS[0];
+
+  const region = {
+    latitude: nextStop.lat,
+    longitude: nextStop.lng,
+    latitudeDelta: 0.02,
+    longitudeDelta: 0.02,
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Assigned Route</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <Ionicons name="navigate-outline" size={22} color="#1565C0" />
+        <Text style={styles.title}>Next Stop Map</Text>
+      </View>
 
+      <Text style={styles.subtitle}>
+        Navigating to:{" "}
+        <Text style={{ fontWeight: "700" }}>{nextStop.name}</Text>
+      </Text>
+
+      {/* Map */}
       <MapView
         style={styles.map}
-        initialRegion={{
-          latitude: 12.9716,
-          longitude: 77.5946,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
+        initialRegion={region}
+        showsUserLocation={true}
       >
-        <Marker
-          coordinate={{ latitude: 12.9716, longitude: 77.5946 }}
-          title="Start point"
-        />
-        <Marker
-          coordinate={{ latitude: 12.9816, longitude: 77.6046 }}
-          pinColor="green"
-          title="Next Stop"
-        />
+        {/* All stops */}
+        {DRIVER_STOPS.map((stop) => (
+          <Marker
+            key={stop.id}
+            coordinate={{ latitude: stop.lat, longitude: stop.lng }}
+            title={stop.name}
+            description={stop.place}
+            pinColor={stop.id === nextStop.id ? "green" : "red"}
+          />
+        ))}
       </MapView>
-
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.navigate("DriverHome")}
-      >
-        <Text style={styles.btnText}>Back to Home</Text>
-      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  title: { fontSize: 22, fontWeight: "700", textAlign: "center", margin: 12 },
-  map: { flex: 1, margin: 10, borderRadius: 12 },
-  backButton: {
-    backgroundColor: "#1E88E5",
-    padding: 14,
-    margin: 10,
-    borderRadius: 10,
+  container: { flex: 1, backgroundColor: "#FAFAFA" },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingTop: 10,
   },
-  btnText: { color: "#fff", textAlign: "center", fontSize: 16, fontWeight: "700" },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    marginLeft: 6,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: "#555",
+    marginHorizontal: 12,
+    marginBottom: 6,
+  },
+  map: {
+    flex: 1,
+    margin: 10,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
 });

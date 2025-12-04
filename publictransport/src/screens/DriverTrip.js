@@ -1,246 +1,293 @@
 // src/screens/DriverTrip.js
-import React, { useEffect, useRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert, FlatList, Vibration } from "react-native";
-import * as Location from "expo-location";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+} from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import MapView, { Marker } from "react-native-maps";
+import * as Location from "expo-location";
 
+// 🚌 Stops on this trip – with place names
+const INITIAL_STOPS = [
+  {
+    id: "1",
+    name: "KR Circle Stop",
+    place: "Near Mysore Palace",
+    lat: 12.3037,
+    lng: 76.6520,
+    reached: false,
+  },
+  {
+    id: "2",
+    name: "Suburban Bus Stand",
+    place: "Suburban Bus Stand, Mysore",
+    lat: 12.2966,
+    lng: 76.6551,
+    reached: false,
+  },
+  {
+    id: "3",
+    name: "Mall of Mysore Stop",
+    place: "Chamundi Hill Road",
+    lat: 12.2979,
+    lng: 76.6640,
+    reached: false,
+  },
+];
 
-/* small Haversine to compute km distance */
-const haversineKm = (lat1, lon1, lat2, lon2) => {
-  const toRad = (v) => (v * Math.PI) / 180;
-  const R = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
-  return R * 2 * Math.asin(Math.sqrt(a));
-};
+export default function DriverTrip({ navigation, route }) {
+  // if route name is not passed, show a nice default
+  const [stops, setStops] = useState(INITIAL_STOPS);
+  const routeName =
+  route?.params?.routeName || "Mysore City Service";
 
-export default function DriverTrip({ navigation }) {
-  const [isOnTrip, setIsOnTrip] = useState(false);
-  const watcherRef = useRef(null);
-  const positionsRef = useRef([]);
-  const [positions, setPositions] = useState([]);
   const [speed, setSpeed] = useState(0);
-  const [stops, setStops] = useState([
-    { id: "s1", name: "Stop A", lat: 12.9726, lng: 77.5951, reached: false },
-    { id: "s2", name: "Stop B", lat: 12.9736, lng: 77.5960, reached: false },
-    { id: "s3", name: "Stop C", lat: 12.9746, lng: 77.5970, reached: false },
-  ]);
+  const [points, setPoints] = useState(0);
+  const [tripStarted, setTripStarted] = useState(false);
 
-  const speedLimit = 50; // km/h
-  const offRouteThreshold = 0.6; // km
+  const nextStop = stops.find((s) => !s.reached);
 
+  // 📡 Watch speed using GPS
   useEffect(() => {
+    let sub;
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, distanceInterval: 10 },
+        (loc) => {
+          const s = loc.coords.speed || 0; // m/s
+          setSpeed(Math.max(0, Math.round(s * 3.6))); // to km/h
+        }
+      );
+    })();
+
     return () => {
-      if (watcherRef.current) watcherRef.current.remove();
+      if (sub) sub.remove();
     };
   }, []);
 
-  const startTrip = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") return Alert.alert("Permission required", "Allow location");
+  const handleStartTrip = () => {
+    setTripStarted(true);
+  };
 
-    setIsOnTrip(true);
-    positionsRef.current = [];
-    setPositions([]);
-
-    const sub = await Location.watchPositionAsync(
-      { accuracy: Location.Accuracy.High, timeInterval: 3000, distanceInterval: 5 },
-      (loc) => {
-        const c = loc.coords;
-        const kmh = c.speed ? Math.round(c.speed * 3.6) : 0;
-        setSpeed(kmh);
-        positionsRef.current.push({ lat: c.latitude, lng: c.longitude, ts: Date.now(), speed: kmh });
-        setPositions([...positionsRef.current]);
-
-        // overspeed
-        if (kmh > speedLimit) {
-          Vibration.vibrate(300);
-          Alert.alert("Overspeed", `Speed ${kmh} km/h > ${speedLimit}`);
-        }
-
-        // off-route check
-        const next = stops.find(s => !s.reached);
-        if (next) {
-          const d = haversineKm(c.latitude, c.longitude, next.lat, next.lng);
-          if (d > offRouteThreshold) {
-            Alert.alert("Off-route", `~${d.toFixed(2)} km from next stop`);
-          }
-        }
-
-        // (Optional) push coords to server here
-      }
+  const markStopReached = (id) => {
+    setStops((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, reached: true } : s))
     );
-
-    watcherRef.current = sub;
-    Alert.alert("Trip started", "Location sharing started (demo)");
+    setPoints((p) => p + 5);
   };
 
-  const endTrip = async () => {
-    if (watcherRef.current) {
-      watcherRef.current.remove();
-      watcherRef.current = null;
-    }
-    setIsOnTrip(false);
-
-    // save trip history
-    const trip = {
-      id: `trip_${Date.now()}`,
-      startedAt: Date.now(),
-      endedAt: Date.now(),
-      positions: positionsRef.current,
-      stops,
-    };
-
-    try {
-      const raw = await AsyncStorage.getItem("trip_history");
-      const arr = raw ? JSON.parse(raw) : [];
-      arr.unshift(trip);
-      await AsyncStorage.setItem("trip_history", JSON.stringify(arr));
-      Alert.alert("Trip saved", `Saved ${positionsRef.current.length} points`);
-    } catch (e) {
-      console.warn(e);
-    }
-
-    positionsRef.current = [];
-    setPositions([]);
-  };
-
-  const markReached = (id) => {
-    setStops(prev => prev.map(s => s.id === id ? { ...s, reached: true } : s));
-    Alert.alert("Stop", "Marked reached");
-  };
-
-  const distanceToNext = () => {
-    // use last position
-    const last = positionsRef.current[positionsRef.current.length - 1];
-    if (!last) return null;
-    const next = stops.find(s => !s.reached);
-    if (!next) return null;
-    return haversineKm(last.lat, last.lng, next.lat, next.lng);
-  };
+  // 🚏 How each stop row looks
+  const renderStop = ({ item }) => (
+    <View style={styles.stopRow}>
+      <View>
+        <Text style={styles.stopName}>{item.name}</Text>
+        {/* show place (not coordinates) */}
+        <Text style={styles.stopCoords}>{item.place}</Text>
+      </View>
+      <TouchableOpacity
+        disabled={item.reached || !tripStarted}
+        style={[
+          styles.reachedBtn,
+          item.reached && { backgroundColor: "#9E9E9E" },
+          !item.reached && !tripStarted && { backgroundColor: "#B0BEC5" },
+        ]}
+        onPress={() => markStopReached(item.id)}
+      >
+        <Text style={styles.reachedText}>
+          {item.reached ? "Done" : "Reached"}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back" size={24} /></TouchableOpacity>
-        <Text style={styles.headerTitle}>Trip Dashboard</Text>
+      {/* Top bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} />
+        </TouchableOpacity>
+        <Text style={styles.topTitle}>Trip Dashboard</Text>
         <View style={{ width: 24 }} />
       </View>
 
+      {/* Stats row */}
       <View style={styles.statsRow}>
-  <View style={styles.statCard}>
-    <Text style={styles.statLabel}>Speed</Text>
-    <Text style={styles.statValue}>{speed} km/h</Text>
-  </View>
-
-  <View style={styles.statCard}>
-    <Text style={styles.statLabel}>Points</Text>
-    <Text style={styles.statValue}>{positions.length}</Text>
-  </View>
-
-  <View style={styles.statCard}>
-    <Text style={styles.statLabel}>Next</Text>
-    <Text style={styles.statValue}>
-      {distanceToNext() ? `${distanceToNext().toFixed(2)} km` : "—"}
-    </Text>
-  </View>
-
-  {/* 📍 Current Location Display */}
-  <View style={styles.statCard}>
-    <Text style={styles.statLabel}>Location</Text>
-    <Text style={styles.statValue}>
-      {positions.length > 0
-        ? `${positions[positions.length - 1].lat.toFixed(4)}, ${positions[positions.length - 1].lng.toFixed(4)}`
-        : "—"}
-    </Text>
-  </View>
-</View>
-
-
-      <View style={styles.controls}>
-        {!isOnTrip ? (
-          <TouchableOpacity style={styles.startBtn} onPress={startTrip}><Text style={styles.startText}>Start Trip</Text></TouchableOpacity>
-        ) : (
-          <TouchableOpacity style={styles.stopBtn} onPress={endTrip}><Text style={styles.stopText}>End Trip</Text></TouchableOpacity>
-        )}
-      </View>
-      {/* SHOW MAP WHEN TRIP STARTED */}
-{positions.length > 0 && (
-  <View style={{ height: 250, width: "100%", borderRadius: 10, overflow: "hidden", marginVertical: 10 }}>
-    <MapView
-      style={{ flex: 1 }}
-      initialRegion={{
-        latitude: positions[positions.length - 1].lat,
-        longitude: positions[positions.length - 1].lng,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }}
-      region={{
-        latitude: positions[positions.length - 1].lat,
-        longitude: positions[positions.length - 1].lng,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }}
-      showsUserLocation={true}
-      followsUserLocation={true}
-    >
-      <Marker
-        coordinate={{
-          latitude: positions[positions.length - 1].lat,
-          longitude: positions[positions.length - 1].lng,
-        }}
-        title="You"
-      />
-    </MapView>
-  </View>
-)}
-
-      <Text style={styles.section}>Stops</Text>
-      <FlatList data={stops} keyExtractor={i => i.id} renderItem={({ item }) => (
-        <View style={[styles.stopRow, item.reached && { backgroundColor: "#e8f5e9" }]}>
-          <View>
-            <Text style={styles.stopName}>{item.name}</Text>
-            <Text style={styles.stopCoords}>{item.lat.toFixed(4)}, {item.lng.toFixed(4)}</Text>
-          </View>
-          <View style={{ alignItems: "flex-end" }}>
-            {!item.reached ? (
-              <TouchableOpacity style={styles.reachedBtn} onPress={() => markReached(item.id)}><Text style={{ color: "#fff" }}>Reached</Text></TouchableOpacity>
-            ) : (
-              <Text style={{ color: "#388e3c", fontWeight: "700" }}>Done</Text>
-            )}
-          </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Speed</Text>
+          <Text style={styles.statValue}>{speed} km/h</Text>
         </View>
-      )} />
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Points</Text>
+          <Text style={styles.statValue}>{points}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Next</Text>
+          <Text style={styles.statValue}>{nextStop ? nextStop.name : "-"}</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Route</Text>
+          <Text style={[styles.statValue, { fontSize: 11 }]}>
+            {routeName}
+          </Text>
+        </View>
+      </View>
 
-      <Text style={styles.section}>Quick Actions</Text>
+      {/* Start trip */}
+      <TouchableOpacity
+        style={[
+          styles.startBtn,
+          tripStarted && { backgroundColor: "#9E9E9E" },
+        ]}
+        onPress={handleStartTrip}
+        disabled={tripStarted}
+      >
+        <Text style={styles.startLabel}>
+          {tripStarted ? "Trip In Progress" : "Start Trip"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* Stops list */}
+      <Text style={styles.sectionTitle}>Stops</Text>
+      <FlatList
+        data={stops}
+        keyExtractor={(i) => i.id.toString()}
+        renderItem={renderStop}
+        contentContainerStyle={{ paddingBottom: 8 }}
+      />
+
+      {/* Quick actions */}
       <View style={styles.quickRow}>
-        <TouchableOpacity style={styles.quickBtn} onPress={() => Alert.alert("Breakdown", "Reported (demo)") }><Ionicons name="warning" size={18} /><Text>Breakdown</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.quickBtn} onPress={() => Alert.alert("SOS", "SOS sent to admin (demo)") }><Ionicons name="alert-circle" size={18} /><Text>SOS</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.quickBtn} onPress={() => Alert.alert("Share", "Sharing location (demo)") }><Ionicons name="share-social" size={18} /><Text>Share</Text></TouchableOpacity>
+        {/* Breakdown */}
+        <TouchableOpacity
+          style={styles.quickBtn}
+          onPress={() => navigation.navigate("BreakdownReport")}
+        >
+          <Ionicons name="warning-outline" size={22} color="#C62828" />
+          <Text style={styles.quickText}>Breakdown</Text>
+        </TouchableOpacity>
+
+        {/* SOS */}
+        <TouchableOpacity
+          style={styles.quickBtn}
+          onPress={() => navigation.navigate("DriverSOS")}
+        >
+          <Ionicons name="alert-circle-outline" size={22} color="#D84315" />
+          <Text style={styles.quickText}>SOS</Text>
+        </TouchableOpacity>
+
+        {/* History */}
+        <TouchableOpacity
+          style={styles.quickBtn}
+          onPress={() => navigation.navigate("DriverTripHistory")}
+        >
+          <Ionicons name="time-outline" size={22} color="#1565C0" />
+          <Text style={styles.quickText}>History</Text>
+        </TouchableOpacity>
+
+        {/* Navigation to Next Stop */}
+        <TouchableOpacity
+          style={styles.quickBtn}
+          onPress={() =>
+            nextStop &&
+            navigation.navigate("DriverRouteMap", { nextStop: nextStop })
+          }
+        >
+          <Ionicons name="navigate-outline" size={22} color="#2E7D32" />
+          <Text style={styles.quickText}>Next Stop</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-const styles = {
-  container: { flex: 1, padding: 12 },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 8 },
-  headerTitle: { fontSize: 18, fontWeight: "700" },
-  statsRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 12 },
-  statCard: { flex: 1, backgroundColor: "#fff", padding: 10, borderRadius: 8, marginHorizontal: 4, alignItems: "center" },
-  statLabel: { color: "#666" }, statValue: { fontSize: 16, fontWeight: "700", marginTop: 6 },
-  controls: { alignItems: "center", marginBottom: 12 },
-  startBtn: { backgroundColor: "#1E88E5", padding: 12, borderRadius: 10, width: "90%", alignItems: "center" },
-  startText: { color: "#fff", fontWeight: "700" },
-  stopBtn: { backgroundColor: "#FF3B30", padding: 12, borderRadius: 10, width: "90%", alignItems: "center" },
-  stopText: { color: "#fff", fontWeight: "700" },
-  section: { fontSize: 16, fontWeight: "700", marginTop: 8, marginBottom: 6 },
-  stopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", padding: 10, backgroundColor: "#fff", borderRadius: 8, marginBottom: 8 },
-  stopName: { fontWeight: "700" }, stopCoords: { color: "#666" },
-  reachedBtn: { backgroundColor: "#1E88E5", padding: 8, borderRadius: 8 },
-  quickRow: { flexDirection: "row", justifyContent: "space-around", marginTop: 8 },
-  quickBtn: { alignItems: "center", backgroundColor: "#f1f1f1", padding: 10, borderRadius: 8, width: "30%" },
-};
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "#FAFAFA" },
+
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  topTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginHorizontal: 12,
+    marginTop: 4,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 4,
+    paddingVertical: 8,
+    borderRadius: 10,
+    alignItems: "center",
+    elevation: 1,
+  },
+  statLabel: { fontSize: 11, color: "#757575" },
+  statValue: { fontSize: 15, fontWeight: "700", marginTop: 2 },
+
+  startBtn: {
+    marginHorizontal: 12,
+    marginTop: 10,
+    backgroundColor: "#1976D2",
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  startLabel: { color: "#fff", fontSize: 16, fontWeight: "600" },
+
+  sectionTitle: {
+    marginTop: 14,
+    marginHorizontal: 12,
+    fontWeight: "700",
+    fontSize: 15,
+  },
+
+  stopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginHorizontal: 12,
+    marginTop: 8,
+    backgroundColor: "#FFFFFF",
+    padding: 10,
+    borderRadius: 10,
+    elevation: 1,
+  },
+  stopName: { fontSize: 14, fontWeight: "600" },
+  stopCoords: { fontSize: 11, color: "#757575", marginTop: 2 },
+
+  reachedBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#1E88E5",
+  },
+  reachedText: { color: "#fff", fontSize: 12, fontWeight: "600" },
+
+  quickRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingVertical: 12,
+    borderTopWidth: 0.5,
+    borderTopColor: "#eee",
+    marginTop: 8,
+  },
+  quickBtn: { alignItems: "center", gap: 4 },
+  quickText: { fontSize: 12, fontWeight: "600" },
+});
