@@ -18,7 +18,8 @@ export default function MapViewUniversal({ coordinate }) {
           longitudeDelta: 0.01,
         }}
       >
-        <Marker coordinate={coord} />
+        <Marker coordinate={coord}  />
+        
       </MapView>
     </View>
   );
