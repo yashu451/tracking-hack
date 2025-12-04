@@ -20,7 +20,6 @@ import SOSScreen from "../screens/SOSScreen";
 import FeedbackScreen from "../screens/FeedbackScreen";
 import TrackDriverLocation from "../screens/TrackDriverLocation";
 import TrackBusScreen from "../screens/TrackBusScreen";
-import ETAReminderScreen from "./screens/ETAReminderScreen";
 
 // Driver Screens
 import DriverHome from "../screens/DriverHome";
@@ -57,8 +56,6 @@ export default function RootNavigator() {
 <Stack.Screen name="TrackDriverLocation" component={TrackDriverLocation} />
 
 <Stack.Screen name="TrackBus" component={TrackBusScreen} />
-<Stack.Screen name="ETAReminderScreen" component={ETAReminderScreen} />
-
 
         {/* Driver */}
         <Stack.Screen name="DriverHome" component={DriverHome} />
