@@ -4,8 +4,8 @@ import { View, Text, StyleSheet, Image, Animated, Easing } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 export default function SplashScreen({ navigation }) {
-  const scaleAnim = new Animated.Value(0.5);
-  const fadeAnim = new Animated.Value(0);
+  const scaleAnim = new Animated.Value(1);
+  const fadeAnim = new Animated.Value(1);
 
   useEffect(() => {
     // Zoom + Fade animation
@@ -28,7 +28,11 @@ export default function SplashScreen({ navigation }) {
   }, []);
 
   return (
-    <LinearGradient colors={["#0D47A1", "#1976D2"]} style={styles.container}>
+   <LinearGradient 
+  colors={["#6A11CB", "#2575FC"]} 
+  style={styles.container}
+>
+
       <Animated.View
         style={[
           styles.logoContainer,

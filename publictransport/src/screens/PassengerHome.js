@@ -200,6 +200,7 @@ const updateLocation = (lat, lng) => {
           <TouchableOpacity onPress={() => navigation.navigate("PassengerSettings")} style={styles.iconBtn}><Ionicons name="settings" size={26} color="#fff" /></TouchableOpacity>
         </View>
       </View>
+      
 
       {/* Search */}
       <View style={styles.searchRow}>
@@ -215,22 +216,41 @@ const updateLocation = (lat, lng) => {
       </View>
 
       {/* Shortcuts */}
-      <View style={styles.shortcutRow}>
-        <TouchableOpacity style={styles.shortcut} onPress={openNearby}><Ionicons name="location-outline" size={22} /><Text>Nearby Stops</Text></TouchableOpacity>
-       <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("TrackDriverLocation") }>
-  <Ionicons name="navigate-outline" size={22} />
-  <Text>Live Location</Text>
-</TouchableOpacity>
+<View style={styles.shortcutWrapper}>
 
+  {/* Row 1 */}
+  <View style={styles.shortcutRow}>
+    <TouchableOpacity style={styles.shortcut} onPress={openNearby}>
+      <Ionicons name="location-outline" size={22} />
+      <Text>Nearby Stops</Text>
+    </TouchableOpacity>
 
-        <TouchableOpacity style={styles.shortcut} onPress={openRoutePlanner}><Ionicons name="calendar-outline" size={22} /><Text>Plan Route</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.shortcut} 
-  onPress={() => navigation.navigate("ETAViewScreen")}>
-  <Ionicons name="alarm-outline" size={22} />
-  <Text>ETA Reminder</Text>
-</TouchableOpacity>
+    <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("TrackDriverLocation")}>
+      <Ionicons name="navigate-outline" size={22} />
+      <Text>Live location</Text>
+    </TouchableOpacity>
 
-      </View>
+    <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("TicketBooking")}>
+      <Ionicons name="cash-outline" size={22} />
+      <Text>Tickets</Text>
+    </TouchableOpacity>
+  </View>
+
+  {/* Row 2 */}
+  <View style={styles.shortcutRow}>
+    <TouchableOpacity style={styles.shortcut} onPress={openRoutePlanner}>
+      <Ionicons name="calendar-outline" size={22} />
+      <Text>Plan Route</Text>
+    </TouchableOpacity>
+
+    <TouchableOpacity style={styles.shortcut} onPress={() => navigation.navigate("ETAViewScreen")}>
+      <Ionicons name="alarm-outline" size={22} />
+      <Text>ETA Reminder</Text>
+    </TouchableOpacity>
+  </View>
+
+</View>
+
 
       {/* Map */}
       <MapView

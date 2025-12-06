@@ -21,6 +21,8 @@ import FeedbackScreen from "../screens/FeedbackScreen";
 import TrackDriverLocation from "../screens/TrackDriverLocation";
 import TrackBusScreen from "../screens/TrackBusScreen";
 import ETAViewScreen from "../screens/ETAViewScreen";
+import TicketBooking from "../screens/TicketBooking";
+
 
 
 // Driver Screens
@@ -31,6 +33,7 @@ import DriverTripHistory from "../screens/DriverTripHistory";
 import DriverRouteMap from "../screens/DriverRouteMap";
 import BreakdownReport from "../screens/BreakdownReport";
 import DriverSOS from "../screens/DriverSOS";
+
 
 const Stack = createNativeStackNavigator();
 
@@ -60,6 +63,8 @@ export default function RootNavigator() {
 <Stack.Screen name="TrackBus" component={TrackBusScreen} />
 
 <Stack.Screen name="ETAViewScreen" component={ETAViewScreen} />
+<Stack.Screen name="TicketBooking" component={TicketBooking} />
+
         {/* Driver */}
         <Stack.Screen name="DriverHome" component={DriverHome} />
         <Stack.Screen name="DriverProfile" component={DriverProfile} />
