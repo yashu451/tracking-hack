@@ -1,38 +1,97 @@
+// src/screens/TicketBooking.js
 import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from "react-native";
 import QRCode from "react-native-qrcode-svg";
 
-export default function TicketBooking({ navigation }) {
+const haversineDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371; // Earth radius in KM
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) *
+      Math.cos(lat2 * Math.PI / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Number((R * c).toFixed(2));
+};
+
+export default function TicketBooking() {
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
   const [ticket, setTicket] = useState(null);
 
-  const buyTicket = () => {
-    const t = {
-      id: Math.random().toString(36).substring(2, 8),
-      time: new Date().toLocaleTimeString(),
-      from: "Stop A",
-      to: "Stop B",
-      fare: "₹20"
+  const generateFareAndTicket = () => {
+    if (!from || !to) return alert("Please enter both stops");
+
+    // Dummy coordinates for stops
+    const stops = {
+      A: { lat: 12.3000, lng: 76.6500 },
+      B: { lat: 12.3100, lng: 76.6600 },
+      C: { lat: 12.3200, lng: 76.6700 },
+      D: { lat: 12.3300, lng: 76.6800 },
     };
+
+    if (!stops[from] || !stops[to]) {
+      return alert("Invalid stop! Use A, B, C, or D");
+    }
+
+    const dist = haversineDistance(
+      stops[from].lat,
+      stops[from].lng,
+      stops[to].lat,
+      stops[to].lng
+    );
+
+    // Fare formula: Minimum ₹10 + ₹5 per KM
+    const fare = Math.max(10, Math.round(dist * 5 + 10));
+
+    const t = {
+      id: "T" + Math.floor(Math.random() * 9999),
+      from,
+      to,
+      distance: dist,
+      fare,
+      time: Date.now(),
+    };
+
     setTicket(t);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Digital Ticket</Text>
+      <Text style={styles.title}>Book Ticket 🎫</Text>
 
-      {!ticket ? (
-        <TouchableOpacity style={styles.buyBtn} onPress={buyTicket}>
-          <Text style={styles.btnText}>Buy Ticket</Text>
-        </TouchableOpacity>
-      ) : (
+      <TextInput
+        placeholder="From (A/B/C/D)"
+        style={styles.input}
+        value={from}
+        onChangeText={setFrom}
+      />
+      <TextInput
+        placeholder="To (A/B/C/D)"
+        style={styles.input}
+        value={to}
+        onChangeText={setTo}
+      />
+
+      <TouchableOpacity style={styles.button} onPress={generateFareAndTicket}>
+        <Text style={styles.btnText}>Generate Ticket</Text>
+      </TouchableOpacity>
+
+      {ticket && (
         <View style={styles.ticketBox}>
-          <Text style={styles.label}>Bus Ticket</Text>
-          <QRCode value="phonepe://pay" size={150} />
+          <Text style={styles.ticketText}>From: {ticket.from}</Text>
+          <Text style={styles.ticketText}>To: {ticket.to}</Text>
+          <Text style={styles.ticketText}>Distance: {ticket.distance} km</Text>
+          <Text style={styles.ticketText}>Fare: ₹{ticket.fare}</Text>
 
-
-          <Text style={styles.detail}>From: {ticket.from}</Text>
-          <Text style={styles.detail}>To: {ticket.to}</Text>
-          <Text style={styles.detail}>Fare: {ticket.fare}</Text>
+          <QRCode
+            value={`TICKET|${ticket.id}|${ticket.from}|${ticket.to}|${ticket.fare}|${ticket.time}`}
+            size={180}
+          />
         </View>
       )}
     </View>
@@ -40,21 +99,17 @@ export default function TicketBooking({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", paddingTop: 40 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 20 },
-  buyBtn: {
-    backgroundColor: "#4CAF50",
-    padding: 16,
-    borderRadius: 10,
-    width: "70%",
-    alignItems: "center",
+  container: { flex: 1, padding: 20 },
+  title: { fontSize: 23, fontWeight: "700", marginBottom: 10 },
+  input: {
+    borderWidth: 1, borderColor: "#aaa", borderRadius: 8,
+    paddingHorizontal: 12, marginBottom: 10, height: 45
   },
-  btnText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  ticketBox: {
-    backgroundColor: "#fff",
-    padding: 18,
-    borderRadius: 12,
-    alignItems: "center",
+  button: {
+    backgroundColor: "#1E88E5", padding: 12,
+    borderRadius: 8, alignItems: "center", marginBottom: 15
   },
-  detail: { marginTop: 6, fontSize: 14, fontWeight: "600" }
+  btnText: { color: "#fff", fontWeight: "700" },
+  ticketBox: { backgroundColor: "#eee", padding: 15, borderRadius: 12, alignItems: "center" },
+  ticketText: { fontSize: 15, marginVertical: 3, fontWeight: "600" }
 });
